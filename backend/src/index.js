@@ -18,7 +18,7 @@ webpush.setVapidDetails(
 
 // Middlewares
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: process.env.FRONTEND_URL || ['http://localhost:5173', 'http://frontend'],
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
