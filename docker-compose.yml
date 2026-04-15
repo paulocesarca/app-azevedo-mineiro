@@ -29,8 +29,8 @@ services:
       args:
         VITE_API_URL: /api
     container_name: appfinancas-frontend
-    ports:
-      - "80:80"
+    expose:
+      - "80"
     depends_on:
       - backend
     restart: unless-stopped
