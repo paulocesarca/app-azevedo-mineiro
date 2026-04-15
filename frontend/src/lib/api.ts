@@ -48,6 +48,8 @@ export const api = {
       const qs = params ? '?' + new URLSearchParams(params).toString() : '';
       return request<import('../types').Transaction[]>(`/transactions${qs}`);
     },
+    pending: () =>
+      request<import('../types').Transaction[]>('/transactions/pending'),
     create: (data: Record<string, unknown>) =>
       request<{ parent_id: string; transactions: { id: string; date: string; installment_number: number }[] }>(
         '/transactions',
@@ -58,6 +60,10 @@ export const api = {
         method: 'PUT',
         body: JSON.stringify(data),
       }),
+    markPaid: (id: string) =>
+      request<import('../types').Transaction>(`/transactions/${id}/pay`, { method: 'PATCH' }),
+    markUnpaid: (id: string) =>
+      request<import('../types').Transaction>(`/transactions/${id}/unpay`, { method: 'PATCH' }),
     delete: (id: string) =>
       request<{ success: boolean }>(`/transactions/${id}`, { method: 'DELETE' }),
     deleteGroup: (parentId: string) =>

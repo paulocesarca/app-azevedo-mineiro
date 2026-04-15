@@ -1,10 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { TrendingUp, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 export default function Login() {
-  const { login, register } = useAuth();
+  const { login, register, user } = useAuth();
+  const navigate = useNavigate();
   const [mode, setMode] = useState<'login' | 'register'>('login');
+
+  // Redireciona se já estiver logado
+  useEffect(() => {
+    if (user) navigate('/', { replace: true });
+  }, [user, navigate]);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,6 +30,7 @@ export default function Login() {
         if (!name.trim()) { setError('Nome é obrigatório'); setLoading(false); return; }
         await register(name, email, password);
       }
+      navigate('/', { replace: true });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro ao entrar');
     } finally {

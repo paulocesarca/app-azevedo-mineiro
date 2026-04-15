@@ -57,6 +57,8 @@ db.exec(`
     total_installments INTEGER DEFAULT 1,
     installment_number INTEGER DEFAULT 1,
     parent_transaction_id TEXT,
+    status TEXT NOT NULL DEFAULT 'paid' CHECK(status IN ('paid', 'pending')),
+    paid_at TEXT,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (user_id) REFERENCES users(id),
@@ -128,6 +130,26 @@ function seedData() {
   insertCard.run(uuidv4(), 'Mercado Pago', 9, '#2563EB');
   insertCard.run(uuidv4(), 'Banco Inter', 9, '#EA580C');
 }
+
+// Migração de categorias: adiciona Contratos Fixos e Freelancers se ainda não existirem
+function migrateIncomeCategories() {
+  const { v4: uuidv4 } = require('uuid');
+  const receitas = db.prepare("SELECT id FROM categories WHERE name = 'Receitas' AND parent_id IS NULL").get();
+  if (!receitas) return;
+
+  const toAdd = ['Contratos Fixos', 'Freelancers'];
+  toAdd.forEach(name => {
+    const exists = db.prepare('SELECT id FROM categories WHERE name = ? AND parent_id = ?').get(name, receitas.id);
+    if (!exists) {
+      db.prepare('INSERT INTO categories (id, name, parent_id) VALUES (?, ?, ?)').run(uuidv4(), name, receitas.id);
+    }
+  });
+}
+migrateIncomeCategories();
+
+// Migração: adiciona colunas novas em DBs já existentes sem quebrar
+try { db.exec(`ALTER TABLE transactions ADD COLUMN status TEXT NOT NULL DEFAULT 'paid'`); } catch (_) {}
+try { db.exec(`ALTER TABLE transactions ADD COLUMN paid_at TEXT`); } catch (_) {}
 
 seedData();
 

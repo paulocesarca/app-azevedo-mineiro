@@ -20,6 +20,7 @@ export interface Card {
 
 export type PaymentMethod = 'debit' | 'pix' | 'credit';
 export type TransactionType = 'income' | 'expense';
+export type TransactionStatus = 'paid' | 'pending';
 
 export interface Transaction {
   id: string;
@@ -41,6 +42,8 @@ export interface Transaction {
   total_installments: number;
   installment_number: number;
   parent_transaction_id: string;
+  status: TransactionStatus;
+  paid_at: string | null;
   created_at: string;
   updated_at: string;
   // campos locais (IndexedDB)
@@ -71,6 +74,7 @@ export interface TransactionFilters {
   search?: string;
   month?: string;
   year?: string;
+  status?: TransactionStatus | '';
 }
 
 export interface DashboardSummary {

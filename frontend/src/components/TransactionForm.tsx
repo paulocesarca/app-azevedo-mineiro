@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
-import { X, ChevronDown, Calculator } from 'lucide-react';
+import { X, ChevronDown, Calculator, CheckCircle2, Clock } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { calculateInstallmentDates, formatDate, today } from '../lib/installments';
-import type { Category, Card, Transaction } from '../types';
+import type { Category, Card, Transaction, TransactionStatus } from '../types';
 import clsx from 'clsx';
 
 interface Props {
@@ -30,13 +30,20 @@ export default function TransactionForm({ onClose, onSaved, editTransaction }: P
   const [cardId, setCardId] = useState(editTransaction?.card_id || '');
   const [installments, setInstallments] = useState(editTransaction?.total_installments || 1);
   const [firstInstallmentDate, setFirstInstallmentDate] = useState(editTransaction?.date || today());
+  const [status, setStatus] = useState<TransactionStatus>(editTransaction?.status || 'paid');
 
   // Computed installment dates preview
   const [installmentDates, setInstallmentDates] = useState<string[]>([]);
 
   useEffect(() => {
     Promise.all([api.categories.list(), api.categories.cards()]).then(([cats, cds]) => {
-      setCategories(cats);
+      // A API retorna pais com children[]. Achata tudo num array plano
+      // para que o filtro por parent_id funcione normalmente.
+      const flat = [
+        ...cats,
+        ...cats.flatMap(c => c.children ?? []),
+      ];
+      setCategories(flat);
       setCards(cds);
       if (!cardId && cds.length > 0) setCardId(cds[0].id);
     });
@@ -54,10 +61,19 @@ export default function TransactionForm({ onClose, onSaved, editTransaction }: P
     }
   }, [paymentMethod, installments, cardId, firstInstallmentDate, date, cards]);
 
-  const parentCategories = categories.filter(c => !c.parent_id);
-  const subcategories = categoryId
-    ? categories.filter(c => c.parent_id === categoryId)
-    : [];
+  const receitasId = categories.find(c => !c.parent_id && c.name === 'Receitas')?.id;
+
+  // Receita: mostra apenas filhos de "Receitas" (Contratos Fixos, Freelancers)
+  // Despesa: mostra todos os pais exceto "Receitas"
+  const parentCategories = type === 'income'
+    ? categories.filter(c => c.parent_id === receitasId)
+    : categories.filter(c => !c.parent_id && c.name !== 'Receitas');
+
+  // Subcategorias só para despesa (receita não usa)
+  const visibleParentIds = new Set(parentCategories.map(c => c.id));
+  const subcategories = categories.filter(c =>
+    c.parent_id !== null && visibleParentIds.has(c.parent_id)
+  );
 
   const selectedCard = cards.find(c => c.id === cardId);
   const totalAmount = parseFloat(amount) || 0;
@@ -83,6 +99,7 @@ export default function TransactionForm({ onClose, onSaved, editTransaction }: P
         card_id: paymentMethod === 'credit' ? cardId : null,
         installments: paymentMethod === 'credit' ? installments : 1,
         first_installment_date: paymentMethod === 'credit' && installments > 1 ? (firstInstallmentDate || date) : date,
+        status,
       };
 
       if (editTransaction) {
@@ -137,6 +154,45 @@ export default function TransactionForm({ onClose, onSaved, editTransaction }: P
             ))}
           </div>
 
+          {/* Status: Pago / A pagar */}
+          <div>
+            <label className="label">Status do pagamento</label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setStatus('paid')}
+                className={clsx(
+                  'flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition-all',
+                  status === 'paid'
+                    ? 'bg-green-900/40 border-green-700 text-green-300'
+                    : 'border-slate-700 text-slate-500 hover:text-slate-300'
+                )}
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Pago
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatus('pending')}
+                className={clsx(
+                  'flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium border transition-all',
+                  status === 'pending'
+                    ? 'bg-yellow-900/40 border-yellow-700 text-yellow-300'
+                    : 'border-slate-700 text-slate-500 hover:text-slate-300'
+                )}
+              >
+                <Clock className="w-4 h-4" />
+                A pagar
+              </button>
+            </div>
+            {status === 'pending' && (
+              <p className="text-xs text-yellow-500/80 mt-1.5 flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                Lançado como conta a pagar — marque como pago quando efetuar o pagamento
+              </p>
+            )}
+          </div>
+
           {/* Valor */}
           <div>
             <label className="label">Valor total (R$)</label>
@@ -164,7 +220,7 @@ export default function TransactionForm({ onClose, onSaved, editTransaction }: P
             <input
               className="input"
               type="text"
-              placeholder="Ex: Compras no mercado"
+              placeholder={type === 'income' ? 'Ex: Desenvolvimento site' : 'Ex: Compras no mercado'}
               value={description}
               onChange={e => setDescription(e.target.value)}
               required
@@ -172,14 +228,14 @@ export default function TransactionForm({ onClose, onSaved, editTransaction }: P
           </div>
 
           {/* Categoria */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className={clsx('grid gap-3', type === 'income' ? 'grid-cols-1' : 'grid-cols-2')}>
             <div>
               <label className="label">Categoria</label>
               <div className="relative">
                 <select
                   className="input appearance-none pr-8"
                   value={categoryId}
-                  onChange={e => { setCategoryId(e.target.value); setSubcategoryId(''); }}
+                  onChange={e => setCategoryId(e.target.value)}
                 >
                   <option value="">Selecione</option>
                   {parentCategories.map(c => (
@@ -189,28 +245,29 @@ export default function TransactionForm({ onClose, onSaved, editTransaction }: P
                 <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
               </div>
             </div>
-            <div>
-              <label className="label">Subcategoria</label>
-              <div className="relative">
-                <select
-                  className="input appearance-none pr-8"
-                  value={subcategoryId}
-                  onChange={e => setSubcategoryId(e.target.value)}
-                  disabled={!categoryId || subcategories.length === 0}
-                >
-                  <option value="">Selecione</option>
-                  {subcategories.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+            {type === 'expense' && (
+              <div>
+                <label className="label">Subcategoria</label>
+                <div className="relative">
+                  <select
+                    className="input appearance-none pr-8"
+                    value={subcategoryId}
+                    onChange={e => setSubcategoryId(e.target.value)}
+                  >
+                    <option value="">Selecione</option>
+                    {subcategories.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* Data */}
           <div>
-            <label className="label">Data da compra</label>
+            <label className="label">{type === 'income' ? 'Data do pagamento' : 'Data da compra'}</label>
             <input
               className="input"
               type="date"
@@ -220,32 +277,41 @@ export default function TransactionForm({ onClose, onSaved, editTransaction }: P
             />
           </div>
 
-          {/* Forma de pagamento */}
-          <div>
-            <label className="label">Forma de pagamento</label>
-            <div className="flex gap-2">
-              {(['debit', 'pix', 'credit'] as const).map(m => (
+          {/* Forma de pagamento — apenas para despesas */}
+          {type === 'expense' && (
+            <div>
+              <label className="label">Forma de pagamento</label>
+              <div className="flex gap-2">
                 <button
-                  key={m}
                   type="button"
-                  onClick={() => setPaymentMethod(m)}
+                  onClick={() => setPaymentMethod('debit')}
                   className={clsx(
-                    'flex-1 py-2 rounded-xl text-xs font-medium border transition-all',
-                    paymentMethod === m
-                      ? m === 'credit'
-                        ? 'bg-blue-900/40 border-blue-700 text-blue-300'
-                        : 'bg-slate-700 border-slate-600 text-slate-200'
+                    'flex-1 py-2.5 rounded-xl text-xs font-medium border transition-all',
+                    paymentMethod !== 'credit'
+                      ? 'bg-slate-700 border-slate-600 text-slate-200'
                       : 'border-slate-700 text-slate-500 hover:text-slate-300'
                   )}
                 >
-                  {m === 'debit' ? '🏦 Débito' : m === 'pix' ? '⚡ PIX' : '💳 Crédito'}
+                  ⚡ Pix ou Débito
                 </button>
-              ))}
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('credit')}
+                  className={clsx(
+                    'flex-1 py-2.5 rounded-xl text-xs font-medium border transition-all',
+                    paymentMethod === 'credit'
+                      ? 'bg-blue-900/40 border-blue-700 text-blue-300'
+                      : 'border-slate-700 text-slate-500 hover:text-slate-300'
+                  )}
+                >
+                  💳 Crédito
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Campos de crédito */}
-          {paymentMethod === 'credit' && (
+          {type === 'expense' && paymentMethod === 'credit' && (
             <div className="bg-slate-800/50 rounded-xl p-3 space-y-3 border border-slate-700/50">
               <div>
                 <label className="label">Cartão</label>

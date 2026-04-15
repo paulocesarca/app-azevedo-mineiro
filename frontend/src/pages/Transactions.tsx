@@ -84,7 +84,7 @@ export default function Transactions() {
       t.date, t.description, t.category_name || '', t.subcategory_name || '',
       t.type === 'income' ? 'Receita' : 'Despesa',
       t.amount.toFixed(2),
-      t.payment_method === 'credit' ? 'Crédito' : t.payment_method === 'pix' ? 'PIX' : 'Débito',
+      t.payment_method === 'credit' ? 'Crédito' : 'Pix/Débito',
       t.card_name || '',
       t.installment_number, t.total_installments,
       t.user_name || '',
@@ -170,8 +170,7 @@ export default function Transactions() {
               <label className="label">Pagamento</label>
               <select className="input" value={filters.payment_method || ''} onChange={e => setFilters(f => ({ ...f, payment_method: e.target.value as TransactionFilters['payment_method'] }))}>
                 <option value="">Todos</option>
-                <option value="debit">Débito</option>
-                <option value="pix">PIX</option>
+                <option value="debit">Pix ou Débito</option>
                 <option value="credit">Crédito</option>
               </select>
             </div>

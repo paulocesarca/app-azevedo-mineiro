@@ -4,6 +4,7 @@ import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Transactions from './pages/Transactions';
+import Bills from './pages/Bills';
 import Cards from './pages/Cards';
 import Budget from './pages/Budget';
 import Reports from './pages/Reports';
@@ -36,6 +37,7 @@ export default function App() {
       >
         <Route index element={<Dashboard />} />
         <Route path="transactions" element={<Transactions />} />
+        <Route path="bills" element={<Bills />} />
         <Route path="cards" element={<Cards />} />
         <Route path="budget" element={<Budget />} />
         <Route path="reports" element={<Reports />} />

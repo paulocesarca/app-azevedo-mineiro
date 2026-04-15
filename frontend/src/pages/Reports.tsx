@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { api } from '../lib/api';
 import { formatCurrency, currentMonth, monthName, lastNMonths } from '../lib/installments';
+import MonthSelector from '../components/MonthSelector';
 import type { Transaction } from '../types';
 import clsx from 'clsx';
 
@@ -96,13 +97,6 @@ export default function Reports() {
   const totalExpense = transactions.filter(t => t.type === 'expense').reduce((a, t) => a + t.amount, 0);
   const totalIncome = transactions.filter(t => t.type === 'income').reduce((a, t) => a + t.amount, 0);
 
-  const now = new Date();
-  const months: string[] = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-  }
-
   const TABS = [
     { id: 'pie', label: 'Por categoria' },
     { id: 'bar', label: 'Receita/Despesa' },
@@ -115,16 +109,7 @@ export default function Reports() {
       <h1 className="text-lg font-bold text-slate-100">Relatórios</h1>
 
       {/* Seletor de mês */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4">
-        {months.map(m => (
-          <button key={m} onClick={() => setMonth(m)} className={clsx(
-            'flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-medium transition-all',
-            month === m ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-400 hover:text-slate-200'
-          )}>
-            {monthName(m).split(' de ')[0]}
-          </button>
-        ))}
-      </div>
+      <MonthSelector value={month} onChange={setMonth} />
 
       {/* Totais do mês */}
       <div className="flex gap-3">

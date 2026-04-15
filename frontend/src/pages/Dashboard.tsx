@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, TrendingUp, TrendingDown, CreditCard, Wallet, RefreshCw } from 'lucide-react';
+import { Plus, TrendingUp, TrendingDown, CreditCard, Wallet, RefreshCw, Clock, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useSync } from '../contexts/SyncContext';
-import { formatCurrency, currentMonth, monthName } from '../lib/installments';
+import { formatCurrency, formatDate, currentMonth, monthName } from '../lib/installments';
 import TransactionForm from '../components/TransactionForm';
 import TransactionCard from '../components/TransactionCard';
+import MonthSelector from '../components/MonthSelector';
 import type { Transaction } from '../types';
 import clsx from 'clsx';
 
@@ -30,11 +32,18 @@ function SummaryCard({ label, value, icon: Icon, color }: {
   );
 }
 
+function daysUntil(dateStr: string) {
+  const t = new Date(dateStr + 'T12:00:00Z');
+  const n = new Date(); n.setHours(0,0,0,0);
+  return Math.ceil((t.getTime() - n.getTime()) / 86400000);
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const { online } = useSync();
   const [month, setMonth] = useState(currentMonth());
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [pendingBills, setPendingBills] = useState<Transaction[]>([]);
   const [summary, setSummary] = useState<Summary>({ total_income: 0, total_expense: 0, total_credit: 0, balance: 0 });
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -44,8 +53,12 @@ export default function Dashboard() {
     setLoading(true);
     try {
       const [year, m] = month.split('-');
-      const txs = await api.transactions.list({ year, month: m });
+      const [txs, bills] = await Promise.all([
+        api.transactions.list({ year, month: m }),
+        api.transactions.pending(),
+      ]);
       setTransactions(txs);
+      setPendingBills(bills);
 
       const income = txs.filter(t => t.type === 'income').reduce((a, t) => a + t.amount, 0);
       const expense = txs.filter(t => t.type === 'expense' && t.payment_method !== 'credit').reduce((a, t) => a + t.amount, 0);
@@ -84,14 +97,6 @@ export default function Dashboard() {
     }
   };
 
-  // Gera lista dos últimos 6 meses
-  const months: string[] = [];
-  const now = new Date();
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
-  }
-
   return (
     <div className="px-4 pt-3 space-y-4 max-w-lg mx-auto">
       {/* Header */}
@@ -115,22 +120,47 @@ export default function Dashboard() {
       </div>
 
       {/* Seletor de mês */}
-      <div className="flex gap-2 overflow-x-auto pb-1 -mx-4 px-4 no-scrollbar">
-        {months.map(m => (
-          <button
-            key={m}
-            onClick={() => setMonth(m)}
-            className={clsx(
-              'flex-shrink-0 px-3 py-1.5 rounded-xl text-xs font-medium transition-all',
-              month === m
-                ? 'bg-indigo-600 text-white'
-                : 'bg-slate-800 text-slate-400 hover:text-slate-200'
-            )}
-          >
-            {monthName(m).split(' de ')[0]}
-          </button>
-        ))}
-      </div>
+      <MonthSelector value={month} onChange={setMonth} />
+
+      {/* Contas a pagar — alerta rápido */}
+      {pendingBills.length > 0 && (() => {
+        const urgent = pendingBills.filter(t => daysUntil(t.date) <= 3);
+        const totalPending = pendingBills.reduce((a, t) => a + t.amount, 0);
+        return (
+          <Link to="/bills" className="block card border-yellow-800/40 bg-yellow-900/10 hover:bg-yellow-900/20 transition-all">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-yellow-900/40 flex items-center justify-center flex-shrink-0">
+                {urgent.length > 0
+                  ? <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                  : <Clock className="w-4 h-4 text-yellow-400" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-yellow-200">
+                  {urgent.length > 0
+                    ? `${urgent.length} conta${urgent.length > 1 ? 's' : ''} vence${urgent.length > 1 ? 'm' : ''} em breve!`
+                    : `${pendingBills.length} conta${pendingBills.length > 1 ? 's' : ''} a pagar`}
+                </p>
+                <p className="text-xs text-yellow-500 mt-0.5">
+                  Total pendente: {formatCurrency(totalPending)}
+                </p>
+                {urgent.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {urgent.slice(0, 3).map(t => (
+                      <div key={t.id} className="flex items-center justify-between text-xs">
+                        <span className="text-yellow-300/80 truncate max-w-[60%]">{t.description}</span>
+                        <span className="text-yellow-400 font-medium flex-shrink-0 ml-2">
+                          {formatCurrency(t.amount)} · {formatDate(t.date)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <span className="text-yellow-600 text-xs mt-0.5">ver →</span>
+            </div>
+          </Link>
+        );
+      })()}
 
       {/* Cards de resumo */}
       <div className="grid grid-cols-2 gap-3">
@@ -187,6 +217,7 @@ export default function Dashboard() {
                 transaction={t}
                 onEdit={tx => { setEditTx(tx); setShowForm(true); }}
                 onDelete={handleDelete}
+                onStatusChange={updated => setTransactions(prev => prev.map(x => x.id === updated.id ? updated : x))}
               />
             ))}
             {transactions.length > 10 && (
