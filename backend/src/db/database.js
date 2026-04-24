@@ -125,10 +125,10 @@ function seedData() {
   subcats.forEach(c => insertCat.run(c.id, c.name, c.parent_id));
 
   // Cartões
-  const insertCard = db.prepare('INSERT INTO cards (id, name, closing_day, color) VALUES (?, ?, ?, ?)');
-  insertCard.run(uuidv4(), 'Sicredi', 3, '#16A34A');
-  insertCard.run(uuidv4(), 'Mercado Pago', 9, '#2563EB');
-  insertCard.run(uuidv4(), 'Banco Inter', 9, '#EA580C');
+  const insertCard = db.prepare('INSERT INTO cards (id, name, closing_day, due_day, color) VALUES (?, ?, ?, ?, ?)');
+  insertCard.run(uuidv4(), 'Sicredi', 29, 13, '#16A34A');
+  insertCard.run(uuidv4(), 'Mercado Pago', 9, null, '#2563EB');
+  insertCard.run(uuidv4(), 'Banco Inter', 9, null, '#EA580C');
 }
 
 // Migração de categorias: adiciona Contratos Fixos e Freelancers se ainda não existirem
@@ -150,6 +150,13 @@ migrateIncomeCategories();
 // Migração: adiciona colunas novas em DBs já existentes sem quebrar
 try { db.exec(`ALTER TABLE transactions ADD COLUMN status TEXT NOT NULL DEFAULT 'paid'`); } catch (_) {}
 try { db.exec(`ALTER TABLE transactions ADD COLUMN paid_at TEXT`); } catch (_) {}
+try { db.exec(`ALTER TABLE cards ADD COLUMN due_day INTEGER`); } catch (_) {}
+
+// Migração: atualiza Sicredi para fechamento dia 29 e vencimento dia 13
+function migrateSicrediCard() {
+  db.prepare(`UPDATE cards SET closing_day = 29, due_day = 13 WHERE name = 'Sicredi'`).run();
+}
+migrateSicrediCard();
 
 seedData();
 

@@ -323,7 +323,9 @@ export default function TransactionForm({ onClose, onSaved, editTransaction }: P
                     required
                   >
                     {cards.map(c => (
-                      <option key={c.id} value={c.id}>{c.name} (fecha dia {c.closing_day})</option>
+                      <option key={c.id} value={c.id}>
+                        {c.name} (fecha dia {c.closing_day}{c.due_day ? ` · vence dia ${c.due_day}` : ''})
+                      </option>
                     ))}
                   </select>
                   <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
@@ -352,7 +354,7 @@ export default function TransactionForm({ onClose, onSaved, editTransaction }: P
                     onChange={e => setFirstInstallmentDate(e.target.value)}
                   />
                   <p className="text-xs text-slate-500 mt-1">
-                    O sistema calculará as datas baseado no fechamento do {selectedCard?.name} (dia {selectedCard?.closing_day})
+                    Fechamento dia {selectedCard?.closing_day}{selectedCard?.due_day ? ` · vencimento dia ${selectedCard?.due_day}` : ''} — datas calculadas automaticamente
                   </p>
                 </div>
               )}
