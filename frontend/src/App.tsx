@@ -9,6 +9,7 @@ import Cards from './pages/Cards';
 import Budget from './pages/Budget';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
+import Investments from './pages/Investments';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="cards" element={<Cards />} />
         <Route path="budget" element={<Budget />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="investments" element={<Investments />} />
         <Route path="settings" element={<Settings />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

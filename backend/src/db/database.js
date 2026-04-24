@@ -147,6 +147,33 @@ function migrateIncomeCategories() {
 }
 migrateIncomeCategories();
 
+// Tabela de investimentos
+db.exec(`
+  CREATE TABLE IF NOT EXISTS investments (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    type TEXT NOT NULL DEFAULT 'outro',
+    institution TEXT,
+    invested_amount REAL NOT NULL,
+    current_value REAL NOT NULL,
+    date_invested TEXT NOT NULL,
+    notes TEXT,
+    color TEXT DEFAULT '#6366F1',
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS investment_updates (
+    id TEXT PRIMARY KEY,
+    investment_id TEXT NOT NULL,
+    value REAL NOT NULL,
+    note TEXT,
+    date TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (investment_id) REFERENCES investments(id) ON DELETE CASCADE
+  );
+`);
+
 // Migração: adiciona colunas novas em DBs já existentes sem quebrar
 try { db.exec(`ALTER TABLE transactions ADD COLUMN status TEXT NOT NULL DEFAULT 'paid'`); } catch (_) {}
 try { db.exec(`ALTER TABLE transactions ADD COLUMN paid_at TEXT`); } catch (_) {}

@@ -30,6 +30,7 @@ app.use('/categories', require('./routes/categories'));
 app.use('/budget', require('./routes/budget'));
 app.use('/notifications', require('./routes/notifications'));
 app.use('/sync', require('./routes/sync'));
+app.use('/investments', require('./routes/investments'));
 
 // Rota de health check
 app.get('/health', (req, res) => {

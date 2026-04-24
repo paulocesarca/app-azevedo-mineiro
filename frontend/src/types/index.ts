@@ -78,6 +78,32 @@ export interface TransactionFilters {
   status?: TransactionStatus | '';
 }
 
+export type InvestmentType = 'renda_fixa' | 'acoes' | 'fii' | 'cdb' | 'tesouro' | 'cripto' | 'outro';
+
+export interface Investment {
+  id: string;
+  name: string;
+  type: InvestmentType;
+  institution: string | null;
+  invested_amount: number;
+  current_value: number;
+  date_invested: string;
+  notes: string | null;
+  color: string;
+  created_at: string;
+  updated_at: string;
+  updates?: InvestmentUpdate[];
+}
+
+export interface InvestmentUpdate {
+  id: string;
+  investment_id: string;
+  value: number;
+  note: string | null;
+  date: string;
+  created_at: string;
+}
+
 export interface DashboardSummary {
   total_income: number;
   total_expense: number;

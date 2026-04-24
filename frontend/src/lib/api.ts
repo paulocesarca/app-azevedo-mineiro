@@ -106,6 +106,21 @@ export const api = {
       request('/notifications/closing-reminder', { method: 'POST' }),
   },
 
+  investments: {
+    list: () => request<import('../types').Investment[]>('/investments'),
+    create: (data: Record<string, unknown>) =>
+      request<import('../types').Investment>('/investments', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Record<string, unknown>) =>
+      request<import('../types').Investment>(`/investments/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    updateValue: (id: string, value: number, note?: string, date?: string) =>
+      request<import('../types').Investment>(`/investments/${id}/update-value`, {
+        method: 'PATCH',
+        body: JSON.stringify({ value, note, date }),
+      }),
+    delete: (id: string) =>
+      request<{ success: boolean }>(`/investments/${id}`, { method: 'DELETE' }),
+  },
+
   sync: {
     status: () => request<{ online: boolean; server_time: string }>('/sync/status'),
     push: (operations: unknown[]) =>
