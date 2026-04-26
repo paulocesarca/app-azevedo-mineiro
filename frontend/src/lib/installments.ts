@@ -2,36 +2,42 @@
  * Calcula as datas de vencimento das parcelas de um cartão de crédito.
  *
  * Regra:
- *  - Se o dia da compra > dia de fechamento: 1ª parcela cai no fechamento do MÊS SEGUINTE
- *  - Se o dia da compra <= dia de fechamento: 1ª parcela cai no fechamento do MÊS ATUAL
+ *  - Determina em qual fatura a compra cai (baseado no closing_day)
+ *  - A parcela vence no mês SEGUINTE ao fechamento, no dia de vencimento (due_day)
+ *
+ * Exemplo: Sicredi fecha dia 29, vence dia 13
+ *  - Compra dia 15/abril → fatura abril (fecha 29/04) → 1ª parcela: 13/maio ✅
+ *  - Compra dia 30/abril → fatura maio (fecha 29/05) → 1ª parcela: 13/junho ✅
  */
 export function calculateInstallmentDates(
   purchaseDate: string,
   closingDay: number,
-  numInstallments: number
+  numInstallments: number,
+  dueDay?: number | null
 ): string[] {
   const purchase = new Date(purchaseDate + 'T12:00:00Z');
   const purchaseDay = purchase.getUTCDate();
-  const purchaseMonth = purchase.getUTCMonth(); // 0-indexed
+  const purchaseMonth = purchase.getUTCMonth();
   const purchaseYear = purchase.getUTCFullYear();
 
-  let firstMonth: number;
-  let firstYear: number;
+  // Mês em que a fatura fecha
+  let billingMonth: number;
+  let billingYear: number;
 
   if (purchaseDay > closingDay) {
-    // Compra APÓS o fechamento → próximo mês
-    if (purchaseMonth === 11) {
-      firstMonth = 0;
-      firstYear = purchaseYear + 1;
-    } else {
-      firstMonth = purchaseMonth + 1;
-      firstYear = purchaseYear;
-    }
+    // Compra após fechamento → fatura do próximo mês
+    billingMonth = purchaseMonth === 11 ? 0 : purchaseMonth + 1;
+    billingYear  = purchaseMonth === 11 ? purchaseYear + 1 : purchaseYear;
   } else {
-    // Compra ANTES ou NO dia do fechamento → mesmo mês
-    firstMonth = purchaseMonth;
-    firstYear = purchaseYear;
+    // Compra antes/no fechamento → fatura deste mês
+    billingMonth = purchaseMonth;
+    billingYear  = purchaseYear;
   }
+
+  // Parcela vence no mês seguinte ao fechamento, no due_day (ou closing_day se não tiver)
+  const payDay = dueDay ?? closingDay;
+  const firstMonth = billingMonth === 11 ? 0 : billingMonth + 1;
+  const firstYear  = billingMonth === 11 ? billingYear + 1 : billingYear;
 
   const dates: string[] = [];
   for (let i = 0; i < numInstallments; i++) {
@@ -41,13 +47,9 @@ export function calculateInstallmentDates(
       month -= 12;
       year++;
     }
-
-    // Ajusta se o dia não existe no mês (ex: 31 de fevereiro)
     const maxDay = new Date(year, month + 1, 0).getDate();
-    const day = Math.min(closingDay, maxDay);
-
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    dates.push(dateStr);
+    const day = Math.min(payDay, maxDay);
+    dates.push(`${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
   }
 
   return dates;

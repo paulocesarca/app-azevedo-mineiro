@@ -102,10 +102,10 @@ router.post('/', (req, res) => {
   const createdTransactions = [];
 
   if (payment_method === 'credit' && numInstallments > 1) {
-    const card = db.prepare('SELECT closing_day FROM cards WHERE id = ?').get(card_id);
+    const card = db.prepare('SELECT closing_day, due_day FROM cards WHERE id = ?').get(card_id);
     if (!card) return res.status(400).json({ error: 'Cartão não encontrado' });
 
-    const dates = calculateInstallmentDates(first_installment_date || date, card.closing_day, numInstallments);
+    const dates = calculateInstallmentDates(first_installment_date || date, card.closing_day, card.due_day, numInstallments);
 
     db.transaction(() => {
       dates.forEach((installDate, idx) => {
@@ -249,27 +249,36 @@ router.get('/installments/by-card', (req, res) => {
 
 // --- HELPERS ---
 
-function calculateInstallmentDates(purchaseDate, closingDay, numInstallments) {
+function calculateInstallmentDates(purchaseDate, closingDay, dueDay, numInstallments) {
   const dates = [];
   const purchase = new Date(purchaseDate + 'T12:00:00Z');
-  const purchaseDay  = purchase.getUTCDate();
+  const purchaseDay   = purchase.getUTCDate();
   const purchaseMonth = purchase.getUTCMonth();
   const purchaseYear  = purchase.getUTCFullYear();
 
-  let firstMonth, firstYear;
+  // Mês em que a fatura fecha (billing cycle)
+  let billingMonth, billingYear;
   if (purchaseDay > closingDay) {
-    firstMonth = purchaseMonth === 11 ? 0 : purchaseMonth + 1;
-    firstYear  = purchaseMonth === 11 ? purchaseYear + 1 : purchaseYear;
+    // Compra após fechamento → fatura do próximo mês
+    billingMonth = purchaseMonth === 11 ? 0 : purchaseMonth + 1;
+    billingYear  = purchaseMonth === 11 ? purchaseYear + 1 : purchaseYear;
   } else {
-    firstMonth = purchaseMonth;
-    firstYear  = purchaseYear;
+    // Compra antes/no fechamento → fatura deste mês
+    billingMonth = purchaseMonth;
+    billingYear  = purchaseYear;
   }
+
+  // A 1ª parcela vence no mês SEGUINTE ao fechamento (dia de vencimento)
+  // Se não houver due_day, usa o dia seguinte ao closing_day como referência
+  const payDay = dueDay || closingDay;
+  let firstMonth = billingMonth === 11 ? 0 : billingMonth + 1;
+  let firstYear  = billingMonth === 11 ? billingYear + 1 : billingYear;
 
   for (let i = 0; i < numInstallments; i++) {
     let month = firstMonth + i, year = firstYear;
     while (month > 11) { month -= 12; year++; }
     const maxDay = new Date(year, month + 1, 0).getDate();
-    const day = Math.min(closingDay, maxDay);
+    const day = Math.min(payDay, maxDay);
     dates.push(`${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
   }
   return dates;

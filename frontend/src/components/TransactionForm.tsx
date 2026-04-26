@@ -53,7 +53,7 @@ export default function TransactionForm({ onClose, onSaved, editTransaction }: P
     if (paymentMethod === 'credit' && installments > 1 && cardId) {
       const card = cards.find(c => c.id === cardId);
       if (card) {
-        const dates = calculateInstallmentDates(firstInstallmentDate || date, card.closing_day, installments);
+        const dates = calculateInstallmentDates(firstInstallmentDate || date, card.closing_day, installments, card.due_day);
         setInstallmentDates(dates);
       }
     } else {
