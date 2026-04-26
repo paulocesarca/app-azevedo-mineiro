@@ -133,26 +133,7 @@ export default function TransactionForm({ onClose, onSaved, editTransaction }: P
         </div>
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
-          {/* Tipo */}
-          <div className="flex bg-slate-800 rounded-xl p-1 gap-1">
-            {(['expense', 'income'] as const).map(t => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setType(t)}
-                className={clsx(
-                  'flex-1 py-2 rounded-lg text-sm font-medium transition-all',
-                  type === t
-                    ? t === 'expense'
-                      ? 'bg-red-900/60 text-red-300 shadow'
-                      : 'bg-green-900/60 text-green-300 shadow'
-                    : 'text-slate-500 hover:text-slate-300'
-                )}
-              >
-                {t === 'expense' ? '💸 Despesa' : '💰 Receita'}
-              </button>
-            ))}
-          </div>
+          {/* Tipo fixo: Despesa */}
 
           {/* Status: Pago / A pagar */}
           <div>
