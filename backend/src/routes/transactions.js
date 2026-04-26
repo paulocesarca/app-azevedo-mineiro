@@ -89,7 +89,7 @@ router.post('/', (req, res) => {
   const userId = req.user.id;
   const parentId = uuidv4();
   const numInstallments = (payment_method === 'credit' && installments > 1) ? parseInt(installments) : 1;
-  const installmentAmount = parseFloat(amount) / numInstallments;
+  const installmentAmount = parseFloat(amount); // frontend já envia o valor por parcela
 
   const insert = db.prepare(`
     INSERT INTO transactions
