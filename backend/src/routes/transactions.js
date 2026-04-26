@@ -256,23 +256,35 @@ function calculateInstallmentDates(purchaseDate, closingDay, dueDay, numInstallm
   const purchaseMonth = purchase.getUTCMonth();
   const purchaseYear  = purchase.getUTCFullYear();
 
-  // Mês em que a fatura fecha (billing cycle)
-  let billingMonth, billingYear;
-  if (purchaseDay > closingDay) {
-    // Compra após fechamento → fatura do próximo mês
-    billingMonth = purchaseMonth === 11 ? 0 : purchaseMonth + 1;
-    billingYear  = purchaseMonth === 11 ? purchaseYear + 1 : purchaseYear;
-  } else {
-    // Compra antes/no fechamento → fatura deste mês
-    billingMonth = purchaseMonth;
-    billingYear  = purchaseYear;
-  }
+  let firstMonth, firstYear, payDay;
 
-  // A 1ª parcela vence no mês SEGUINTE ao fechamento (dia de vencimento)
-  // Se não houver due_day, usa o dia seguinte ao closing_day como referência
-  const payDay = dueDay || closingDay;
-  let firstMonth = billingMonth === 11 ? 0 : billingMonth + 1;
-  let firstYear  = billingMonth === 11 ? billingYear + 1 : billingYear;
+  if (dueDay) {
+    // Cartão COM vencimento (ex: Sicredi fecha 29, vence 13):
+    // Determina qual fatura a compra entra, depois vai pro mês seguinte no due_day
+    let billingMonth, billingYear;
+    if (purchaseDay > closingDay) {
+      billingMonth = purchaseMonth === 11 ? 0  : purchaseMonth + 1;
+      billingYear  = purchaseMonth === 11 ? purchaseYear + 1 : purchaseYear;
+    } else {
+      billingMonth = purchaseMonth;
+      billingYear  = purchaseYear;
+    }
+    firstMonth = billingMonth === 11 ? 0  : billingMonth + 1;
+    firstYear  = billingMonth === 11 ? billingYear + 1 : billingYear;
+    payDay = dueDay;
+  } else {
+    // Cartão SEM vencimento configurado (ex: Banco Inter fecha 9):
+    // Compra antes/no fechamento → parcela no mês atual no closing_day
+    // Compra após fechamento → parcela no mês seguinte no closing_day
+    if (purchaseDay > closingDay) {
+      firstMonth = purchaseMonth === 11 ? 0  : purchaseMonth + 1;
+      firstYear  = purchaseMonth === 11 ? purchaseYear + 1 : purchaseYear;
+    } else {
+      firstMonth = purchaseMonth;
+      firstYear  = purchaseYear;
+    }
+    payDay = closingDay;
+  }
 
   for (let i = 0; i < numInstallments; i++) {
     let month = firstMonth + i, year = firstYear;

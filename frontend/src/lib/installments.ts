@@ -1,13 +1,13 @@
 /**
  * Calcula as datas de vencimento das parcelas de um cartão de crédito.
  *
- * Regra:
- *  - Determina em qual fatura a compra cai (baseado no closing_day)
- *  - A parcela vence no mês SEGUINTE ao fechamento, no dia de vencimento (due_day)
+ * Cartão COM due_day (ex: Sicredi fecha 29, vence 13):
+ *   Compra 15/abr → fatura abr (fecha 29/abr) → 1ª parcela 13/mai ✅
+ *   Compra 30/abr → fatura mai (fecha 29/mai) → 1ª parcela 13/jun ✅
  *
- * Exemplo: Sicredi fecha dia 29, vence dia 13
- *  - Compra dia 15/abril → fatura abril (fecha 29/04) → 1ª parcela: 13/maio ✅
- *  - Compra dia 30/abril → fatura maio (fecha 29/05) → 1ª parcela: 13/junho ✅
+ * Cartão SEM due_day (ex: Banco Inter fecha 9):
+ *   Compra 15/abr (após dia 9) → 1ª parcela 09/mai ✅
+ *   Compra 05/abr (antes dia 9) → 1ª parcela 09/abr ✅
  */
 export function calculateInstallmentDates(
   purchaseDate: string,
@@ -16,37 +16,45 @@ export function calculateInstallmentDates(
   dueDay?: number | null
 ): string[] {
   const purchase = new Date(purchaseDate + 'T12:00:00Z');
-  const purchaseDay = purchase.getUTCDate();
+  const purchaseDay   = purchase.getUTCDate();
   const purchaseMonth = purchase.getUTCMonth();
-  const purchaseYear = purchase.getUTCFullYear();
+  const purchaseYear  = purchase.getUTCFullYear();
 
-  // Mês em que a fatura fecha
-  let billingMonth: number;
-  let billingYear: number;
+  let firstMonth: number;
+  let firstYear: number;
+  let payDay: number;
 
-  if (purchaseDay > closingDay) {
-    // Compra após fechamento → fatura do próximo mês
-    billingMonth = purchaseMonth === 11 ? 0 : purchaseMonth + 1;
-    billingYear  = purchaseMonth === 11 ? purchaseYear + 1 : purchaseYear;
+  if (dueDay) {
+    // COM vencimento: acha mês da fatura, vai pro mês seguinte no due_day
+    let billingMonth: number;
+    let billingYear: number;
+    if (purchaseDay > closingDay) {
+      billingMonth = purchaseMonth === 11 ? 0 : purchaseMonth + 1;
+      billingYear  = purchaseMonth === 11 ? purchaseYear + 1 : purchaseYear;
+    } else {
+      billingMonth = purchaseMonth;
+      billingYear  = purchaseYear;
+    }
+    firstMonth = billingMonth === 11 ? 0 : billingMonth + 1;
+    firstYear  = billingMonth === 11 ? billingYear + 1 : billingYear;
+    payDay = dueDay;
   } else {
-    // Compra antes/no fechamento → fatura deste mês
-    billingMonth = purchaseMonth;
-    billingYear  = purchaseYear;
+    // SEM vencimento: compra após fechamento → próximo mês; antes → mesmo mês
+    if (purchaseDay > closingDay) {
+      firstMonth = purchaseMonth === 11 ? 0 : purchaseMonth + 1;
+      firstYear  = purchaseMonth === 11 ? purchaseYear + 1 : purchaseYear;
+    } else {
+      firstMonth = purchaseMonth;
+      firstYear  = purchaseYear;
+    }
+    payDay = closingDay;
   }
-
-  // Parcela vence no mês seguinte ao fechamento, no due_day (ou closing_day se não tiver)
-  const payDay = dueDay ?? closingDay;
-  const firstMonth = billingMonth === 11 ? 0 : billingMonth + 1;
-  const firstYear  = billingMonth === 11 ? billingYear + 1 : billingYear;
 
   const dates: string[] = [];
   for (let i = 0; i < numInstallments; i++) {
     let month = firstMonth + i;
     let year = firstYear;
-    while (month > 11) {
-      month -= 12;
-      year++;
-    }
+    while (month > 11) { month -= 12; year++; }
     const maxDay = new Date(year, month + 1, 0).getDate();
     const day = Math.min(payDay, maxDay);
     dates.push(`${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
