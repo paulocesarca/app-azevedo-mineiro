@@ -21,7 +21,7 @@ export default function TransactionForm({ onClose, onSaved, editTransaction }: P
 
   // Form fields
   const [type, setType] = useState<'income' | 'expense'>(editTransaction?.type || 'expense');
-  const [amount, setAmount] = useState(editTransaction ? String(editTransaction.amount * (editTransaction.total_installments || 1)) : '');
+  const [amount, setAmount] = useState(editTransaction ? String(editTransaction.amount) : '');
   const [description, setDescription] = useState(editTransaction?.description || '');
   const [categoryId, setCategoryId] = useState(editTransaction?.category_id || '');
   const [subcategoryId, setSubcategoryId] = useState(editTransaction?.subcategory_id || '');
@@ -76,8 +76,8 @@ export default function TransactionForm({ onClose, onSaved, editTransaction }: P
   );
 
   const selectedCard = cards.find(c => c.id === cardId);
-  const totalAmount = parseFloat(amount) || 0;
-  const installmentAmount = installments > 1 ? totalAmount / installments : totalAmount;
+  const installmentAmount = parseFloat(amount) || 0;
+  const totalAmount = installmentAmount * installments;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -90,7 +90,7 @@ export default function TransactionForm({ onClose, onSaved, editTransaction }: P
     try {
       const payload = {
         type,
-        amount: parseFloat(amount),
+        amount: installmentAmount,
         description: description.trim(),
         category_id: categoryId || null,
         subcategory_id: subcategoryId || null,
@@ -176,7 +176,9 @@ export default function TransactionForm({ onClose, onSaved, editTransaction }: P
 
           {/* Valor */}
           <div>
-            <label className="label">Valor total (R$)</label>
+            <label className="label">
+              {paymentMethod === 'credit' && installments > 1 ? 'Valor da parcela (R$)' : 'Valor (R$)'}
+            </label>
             <input
               className="input text-lg font-semibold"
               type="number"
@@ -187,10 +189,10 @@ export default function TransactionForm({ onClose, onSaved, editTransaction }: P
               onChange={e => setAmount(e.target.value)}
               required
             />
-            {paymentMethod === 'credit' && installments > 1 && totalAmount > 0 && (
+            {paymentMethod === 'credit' && installments > 1 && installmentAmount > 0 && (
               <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
                 <Calculator className="w-3 h-3" />
-                {installments}x de R$ {installmentAmount.toFixed(2)}
+                {installments}x de R$ {installmentAmount.toFixed(2)} = Total R$ {totalAmount.toFixed(2)}
               </p>
             )}
           </div>
