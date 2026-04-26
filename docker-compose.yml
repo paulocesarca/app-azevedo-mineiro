@@ -5,7 +5,6 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: appfinancas-backend
     environment:
       - NODE_ENV=production
       - JWT_SECRET=${JWT_SECRET:-sua-chave-secreta-aqui}
@@ -13,8 +12,6 @@ services:
     volumes:
       - db_data:/app/data
     restart: unless-stopped
-    networks:
-      - appfinancas-network
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3001/health"]
       interval: 15s
@@ -28,19 +25,12 @@ services:
       dockerfile: Dockerfile
       args:
         VITE_API_URL: /api
-    container_name: appfinancas-frontend
     expose:
       - "80"
     depends_on:
       - backend
     restart: unless-stopped
-    networks:
-      - appfinancas-network
 
 volumes:
   db_data:
     driver: local
-
-networks:
-  appfinancas-network:
-    driver: bridge
