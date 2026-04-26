@@ -1,10 +1,10 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const db = require('../db/database');
-const auth = require('../middleware/auth');
+const { authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
-router.use(auth);
+router.use(authMiddleware);
 
 // GET /investments — lista todos
 router.get('/', (req, res) => {
