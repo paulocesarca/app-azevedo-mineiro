@@ -1,16 +1,15 @@
 import { NavLink, Outlet, Link } from 'react-router-dom';
-import { LayoutDashboard, ArrowLeftRight, CreditCard, PieChart, Target, Settings, Clock, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, CreditCard, PieChart, Settings, Clock, TrendingUp } from 'lucide-react';
 import { useSync } from '../contexts/SyncContext';
 import { useAuth } from '../contexts/AuthContext';
 import clsx from 'clsx';
 
 const NAV_ITEMS = [
-  { to: '/',             icon: LayoutDashboard, label: 'Início'      },
-  { to: '/transactions', icon: ArrowLeftRight,  label: 'Lançar'     },
-  { to: '/bills',        icon: Clock,           label: 'Contas'     },
-  { to: '/investments',  icon: TrendingUp,      label: 'Investidos' },
-  { to: '/cards',        icon: CreditCard,      label: 'Cartões'    },
-  { to: '/reports',      icon: PieChart,        label: 'Relatórios' },
+  { to: '/',            icon: LayoutDashboard, label: 'Início'      },
+  { to: '/bills',       icon: Clock,           label: 'Contas'      },
+  { to: '/investments', icon: TrendingUp,      label: 'Investidos'  },
+  { to: '/cards',       icon: CreditCard,      label: 'Cartões'     },
+  { to: '/reports',     icon: PieChart,        label: 'Relatórios'  },
 ];
 
 export default function Layout() {
