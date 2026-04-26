@@ -1,4 +1,5 @@
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+// Em desenvolvimento usa localhost direto; em produção usa o proxy /api do nginx
+const BASE_URL = import.meta.env.DEV ? 'http://localhost:3001' : '/api';
 
 function getToken(): string | null {
   return localStorage.getItem('auth_token');
